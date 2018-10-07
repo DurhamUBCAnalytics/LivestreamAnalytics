@@ -34,6 +34,7 @@ topcity <- subset(city.data, Users >=10 & City!="Total")
 
 topcity.agg <- subset(device.city.agg, City%in%topcity$City)
 
+### Line plot for devices by sundays
 p <- ggplot(data=device.agg, aes(x=Date, y=Users,group=Device)) +
   geom_line(aes(color=Device)) +
   geom_point(aes(color=Device)) +
@@ -42,6 +43,7 @@ p <- ggplot(data=device.agg, aes(x=Date, y=Users,group=Device)) +
   
 ggsave(p, file="../Livestream Summary Plots/UBC Users by Device Livestream Line Plot.png")
 
+### Bar plot for devices by sundays
 bp <- ggplot(data=device.agg, aes(x=Date, y=Users, fill=Device)) +
   geom_bar(stat="identity") +
   ggtitle("Users by Device") +
@@ -49,6 +51,7 @@ bp <- ggplot(data=device.agg, aes(x=Date, y=Users, fill=Device)) +
 
 ggsave(bp, file="../Livestream Summary Plots/UBC Users by Device Livestream Bar Chart.png")
 
+#### Aggregation of all Sundays by the top cities
 city <- ggplot(data=topcity.agg, aes(x=City, y=Users, fill=Device)) +
   geom_bar(stat="identity") +
   ggtitle("Users by Device All Sundays") +
@@ -60,6 +63,7 @@ ggsave(city, file="../Livestream Summary Plots/UBC Users by Device Top Cities Li
 topcity <- subset(city.data, Users >=5 & City!="Total")
 minorcity.agg <- subset(device.city.agg, City%in%topcity$City & City!="Durham")
 
+### aggregation of "minor cities" aka cities minus durham which dominates the plot
 minor.city <- ggplot(data=minorcity.agg, aes(x=City, y=Users, fill=Device)) +
   geom_bar(stat="identity") +
   ggtitle("Users by Device All Sundays") +
@@ -67,6 +71,7 @@ minor.city <- ggplot(data=minorcity.agg, aes(x=City, y=Users, fill=Device)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
 ggsave(minor.city, file="../Livestream Summary Plots/UBC Users by Device Minor Cities Livestream Bar Chart.png")
 
-ggsave(grid.arrange(p, bp, city, minor.city, nrow=2, ncol=2), file="../Livestream Summary Plots/UBC Users by City Livestream Combined.png", 
+### plots aggregated all into one
+ggsave(grid.arrange(p, bp, city, minor.city, nrow=2, ncol=2), file="../Livestream Summary Plots/UBC Users by Device Livestream Combined.png", 
        width=10, height = 10, units="in", dpi=600)
 
