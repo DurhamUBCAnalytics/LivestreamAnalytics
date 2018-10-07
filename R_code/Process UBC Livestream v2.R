@@ -51,7 +51,7 @@ write.table(rbindlist(list.city), file="../Processed Data/Sunday Livestream City
 
 if(do_plot)
 {
-  source("../R_code/UBC Livestream Source Plots v1.R")
+  source("../R_code/UBC Livestream Source Plots v2.R")
   source("../R_code/UBC Livestream City Plots v1.R")
   source("../R_code/UBC Livestream Device Plots v1.R")
   source("../R_code/UBC Livestream Hourly Plots v1.R")
