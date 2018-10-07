@@ -8,6 +8,8 @@ library(data.table)
 
 setwd("C:/Users/cavin/Desktop/UBC Data Analytics/UBC_Livestream_Analytics/SundayCounts")
 
+do_plot = TRUE ### set this flag to automatically generate plots once all the data is processed
+
 files <- list.files(path=".")
 
 load.analytics <- function(x)
@@ -46,3 +48,11 @@ list.city <- load.analytics(files[grep("City",files)])
 save(list.city, file="../Processed Data/Sunday Livestream City.RData")
 write.table(rbindlist(list.city), file="../Processed Data/Sunday Livestream City.csv", col.names=TRUE, row.names=FALSE, quote=FALSE, sep=",")
 
+
+if(do_plot)
+{
+  source("../R_code/UBC Livestream Source Plots v1.R")
+  source("../R_code/UBC Livestream City Plots v1.R")
+  source("../R_code/UBC Livestream Device Plots v1.R")
+  source("../R_code/UBC Livestream Hourly Plots v1.R")
+}

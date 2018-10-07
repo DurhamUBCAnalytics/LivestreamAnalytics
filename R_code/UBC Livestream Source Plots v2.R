@@ -10,22 +10,16 @@ setwd("C:/Users/cavin/Desktop/UBC Data Analytics/UBC_Livestream_Analytics/Proces
 load("Sunday Livestream Source.RData")
 source.data <- rbindlist(list.source)
 
-### some recoding
-source.data$Source[source.data$Source=="(direct)"] <- "Direct"
-source.data$Source[source.data$Source%in%c("com.google.android.googlequicksearchbox","myactivity.google.com","google")] <- "Google"
-source.data$Source[source.data$Source=="ask"] <- "Ask.com"
-source.data$Source[source.data$Source=="bing"] <- "Bing"
-source.data$Source[source.data$Source%in%c("l.facebook.com","m.facebook.com","facebook.com")] <- "Facebook"
-source.data$Source[source.data$Source=="myubc.org"] <- "UBC site"
-source.data$Source[source.data$Source%in%c("searchencrypt.com","cvriskcalculator.com","dnserrorassist.att.net","dnsrsearch.com",
-                                           "frontpage.pch.com","gospelmusicfever.blogspot.com","lookup.t-mobile.com")] <- "Other"
-source.data$Source[source.data$Source%in%c("us.search.yahoo.com","yahoo")] <- "Yahoo"
-source.data$Source[source.data$Source=="outlook.live.com"] <- "Outlook"
-source.data$Source[source.data$Source=="r.search.aol.com"] <- "AOL"
-
-
 source.data$Date <- as.Date(source.data$Date, "%Y%m%d")
 source.data <- subset(source.data, Source !="")
+source.data$OriSource <- source.data$Source
+### some recoding
+source.data$Source <- "Other"
+source.data$Source[source.data$OriSource=="(direct)"] <- "Direct"
+#source.data$Source[grepl("facebook",source.data$OriSource)] <- "Facebook"
+source.data$Source[grepl("google|bing|yahoo|search|lookup",source.data$OriSource)] <- "Search Engine"
+
+
 
 source.nocity <- source.data[,c("Source","Users","Date")]
 
