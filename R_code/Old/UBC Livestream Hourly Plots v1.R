@@ -4,6 +4,7 @@ library(ggplot2)
 library(dplyr)
 library(data.table)
 library(gridExtra)
+library(tidyr)
 
 setwd("C:/Users/cavin/Desktop/UBC Data Analytics/UBC_Livestream_Analytics/Processed Data")
 source("../R_code/Livestream functions v1.R")
@@ -25,7 +26,7 @@ time.agg <- aggregate(time.nocity[,-c(1,3)], by=list(time.nocity$Hour, time.noci
 names(time.agg)[c(1,2)] <- c("Hour","Date")
 
 time.agg$Service <- NA
-time.agg$Service[time.agg$Hour%in%c(7,8)] <- "7:15"
+time.agg$Service[time.agg$Hour%in%c(7,8)] <- "7:30"
 time.agg$Service[time.agg$Hour%in%c(9,10)] <- "9:30"
 time.agg$Service[time.agg$Hour%in%c(11,12)] <- "11:15"
 
@@ -35,8 +36,17 @@ services <- services[,-1] ### remoes hour for aggregating by service
 services.agg <- aggregate(services[,-c(1,3)], by=list(services$Service, services$Date), FUN=max, na.rm=TRUE)
 names(services.agg) <- c("Service","Date","Viewers")
 
+services.agg.wide <- services.agg[,c("Service","Date","Viewers")]
+services.agg.wide <- spread(services.agg.wide, "Service","Viewers")
+
 ##### now aggregate by city for all Sundays
 service.nodate <- time.data[,c("Service","Users","City")]
+service.city.agg <- service.nodate %>%
+  group_by_(.dots=c("Service","City")) %>% 
+  summarise(Viewers=max(Users)) %>% 
+  as.data.frame()
+  
+#### this aggregation takes the maximum as representative for each service
 service.city.agg <- aggregate(service.nodate[,-c(1,3)], by=list(service.nodate$Service, service.nodate$City), FUN=max, na.rm=TRUE)
 names(service.city.agg) <- c("Service","City","Viewers")
 service.city.agg <- subset(service.city.agg, !City%in%c("(not set)"))
@@ -59,11 +69,37 @@ services_by_week <- services.agg %>%
 services_by_week$Service <- as.factor(services_by_week$Service)
 services_by_week$Service  <- with(services_by_week, reorder(Service, Order))
 
+services_by_week_avg <- services.agg %>% 
+  group_by_(.dots=c("Service","Order","Week","Month")) %>% 
+  summarise(Viewers=sum(Viewers)) %>% 
+  as.data.frame() %>%
+  group_by_(.dots=c("Service","Order","Week")) %>% 
+  summarise(Viewers=mean(Viewers)) %>% 
+  as.data.frame() 
+services_by_week_avg$Service <- as.factor(services_by_week_avg$Service)
+services_by_week_avg$Service  <- with(services_by_week_avg, reorder(Service, Order))
+
+
 service.city.agg$Order <- 1
 service.city.agg$Order[service.city.agg$Service=="9:30"] <- 2
 service.city.agg$Order[service.city.agg$Service=="11:15"] <- 3
+service.city.agg$Service_Per <- 0
+service.city.agg <- service_per(service.city.agg)
+
+vv <- subset(service.city.agg, Service=="9:30")
+service.city.agg$City_Per_Factor <- factor(service.city.agg$City, levels=vv$City[order(vv$Service_Per, decreasing=FALSE)])
+
+vbc <- service.city.agg %>%
+  group_by_(.dots=c("City")) %>% 
+  summarise(Viewers=sum(Viewers)) %>%
+  as.data.frame()
+
+vbc <- vbc[order(vbc$Viewers, decreasing=TRUE),]
+vbc$Percent <- vbc$Viewers/sum(vbc$Viewers)
+
 service.city.agg$Service <- as.factor(service.city.agg$Service)
 service.city.agg$Service  <- with(service.city.agg, reorder(Service, Order))
+
 #### just for extracting the top cities for plotting devices by cities
 load("Sunday Livestream City.RData")
 city.data <- rbindlist(list.city)
@@ -91,11 +127,26 @@ bp <- ggplot(data=services.agg, aes(x=Date, y=Viewers, fill=Service)) +
   scale_x_date(breaks=unique(services.agg$Date[services.agg$Week%in%c(1,3)]), date_labels = "%b %d")
 ggsave(bp, file="../Livestream Summary Plots/UBC Viewers by Service Livestream Bar Chart.png")
 
+bp.per <- ggplot(data=services.agg, aes(x=Date, y=Viewers, fill=Service)) +
+  geom_bar(position="fill", stat="identity") +
+  ggtitle("Viewers by Service") +
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))+
+  scale_x_date(breaks=unique(services.agg$Date[services.agg$Week%in%c(1,3)]), date_labels = "%b %d")+
+  scale_y_continuous(labels = percent_format())
+ggsave(bp.per, file="../Livestream Summary Plots/UBC Viewers by Service Percent Livestream.png")
+
 bp.week <- ggplot(data=services_by_week, aes(x=Week, y=Viewers, fill=Service)) +
   geom_bar(stat="identity") +
   ggtitle("Viewers by Service by Week") + xlab("Week of Month")
   theme(plot.title = element_text(hjust = 0.5)) 
 ggsave(bp.week, file="../Livestream Summary Plots/UBC Viewers by Service by Week Livestream Bar Chart.png")
+
+bp.week_avg <- ggplot(data=services_by_week_avg, aes(x=Week, y=Viewers, fill=Service)) +
+  geom_bar(stat="identity") +
+  ggtitle("Average Viewers by Service by Week") + xlab("Week of Month")
+theme(plot.title = element_text(hjust = 0.5)) 
+ggsave(bp.week_avg, file="../Livestream Summary Plots/UBC Viewers by Service by Week Avg Livestream Bar Chart.png")
 
 city <- ggplot(data=topcity.agg, aes(x=City, y=Viewers, fill=Service)) +
   geom_bar(stat="identity") +
@@ -103,6 +154,15 @@ city <- ggplot(data=topcity.agg, aes(x=City, y=Viewers, fill=Service)) +
   theme(plot.title = element_text(hjust = 0.5)) + 
   theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
 ggsave(city, file="../Livestream Summary Plots/UBC Viewers by Service Top Cities Livestream Bar Chart.png")
+
+city.per <- ggplot(data=topcity.agg, aes(x=City_Per_Factor, y=Viewers, fill=Service)) +
+  geom_bar(position="fill", stat="identity") +
+  xlab("Cities Orderd by % Viewers at 9:30") +
+  ggtitle("Viewers by Service: All Sundays") +
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))+
+  scale_y_continuous(labels = percent_format())
+ggsave(city.per, file="../Livestream Summary Plots/UBC Viewers by Service Percent Top Cities Livestream.png")
 
 minor.city <- ggplot(data=minorcity.agg, aes(x=City, y=Viewers, fill=Service)) +
   geom_bar(stat="identity") +
@@ -112,6 +172,6 @@ minor.city <- ggplot(data=minorcity.agg, aes(x=City, y=Viewers, fill=Service)) +
 ggsave(minor.city, file="../Livestream Summary Plots/UBC Viewers by Service Minor Cities Livestream Bar Chart.png")
 
 ### plots aggregated all into one
-ggsave(grid.arrange(p, bp, city, bp.week, nrow=2, ncol=2), file="../Livestream Summary Plots/Combined UBC Viewers by Service Livestream.png", 
+ggsave(grid.arrange(p, bp, city.per, bp.week_avg, nrow=2, ncol=2), file="../Livestream Summary Plots/Combined UBC Viewers by Service Livestream.png", 
        width=10, height = 10, units="in", dpi=600)
 
